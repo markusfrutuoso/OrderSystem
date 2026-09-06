@@ -1,3 +1,6 @@
+from time import time
+
+
 class OrderSystem:
     def __init__(self):
         self.orders = {}
@@ -14,6 +17,14 @@ class OrderSystem:
             "amount": amount,
             "status": "pending",
         }
+        self.history_orders.append(
+            {
+                "id": order_id,
+                "oldstatus": None,
+                "newstatus": "pending",
+                "timestamp": timestamp,
+            }
+        )
 
     def get_order(self, order_id):
         if order_id not in self.orders:
@@ -87,3 +98,5 @@ system.complete_order(1)
 print(system.get_order(1))
 system.reopen_order(1)
 print(system.get_order(1))
+
+print(time.time())

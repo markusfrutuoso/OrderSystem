@@ -1,12 +1,23 @@
-from time import time
-
+import time
 
 class OrderSystem:
     def __init__(self):
         self.orders = {}
         self.history_orders = []
 
-    def create_order(self, order_id, customer, amount, timestamp=None):
+    def record_history(self, order_id, old_status, new_status, create_at=None):
+        if create_at is None:
+            create_at = time.time()
+        self.history_orders.append(
+            {
+                "id": order_id,
+                "old_status": old_status,
+                "new_status": new_status,
+                "create_at": create_at,
+            }
+        )
+
+    def create_order(self, order_id, customer, amount, create_at=None):
         if order_id in self.orders:
             raise ValueError("Pedido ja existe")
         if amount <= 0:
@@ -17,45 +28,44 @@ class OrderSystem:
             "amount": amount,
             "status": "pending",
         }
-        self.history_orders.append(
-            {
-                "id": order_id,
-                "oldstatus": None,
-                "newstatus": "pending",
-                "timestamp": timestamp,
-            }
-        )
+        self.record_history(order_id, None, "pending", create_at)
 
     def get_order(self, order_id):
         if order_id not in self.orders:
             raise ValueError(f"Pedido {order_id} não existe")
         return self.orders[order_id]
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, order_id, create_at=None):
         order = self.get_order(order_id)
         if order["status"] != "pending":
             raise ValueError(
                 f"Apenas pedidos em 'pending' podem ser cancelados, status do pedido {order_id}: {order['status']}"
             )
+        old_status = "pending"
         order["status"] = "cancelled"
+        self.record_history(order_id, old_status, "cancelled", create_at)
         return True
 
-    def complete_order(self, order_id):
+    def complete_order(self, order_id, create_at=None):
         order = self.get_order(order_id)
         if order["status"] != "pending":
             raise ValueError(
                 f"Apenas pedidos em 'pending' podem ser completados, status do pedido {order_id}: {order['status']}"
             )
+        old_status = "pending"
         order["status"] = "completed"
+        self.record_history(order_id, old_status, "completed", create_at)
         return True
 
-    def reopen_order(self, order_id):
+    def reopen_order(self, order_id, create_at=None):
         order = self.get_order(order_id)
         if order["status"] == "cancelled":
             raise ValueError(
                 f"Apenas pedidos completados podem ser reabertos, status do pedido {order_id}: {order['status']}"
             )
+        old_status = "completed"
         order["status"] = "pending"
+        self.record_history(order_id, old_status, "pending", create_at)
         return True
 
     def get_total_amount(self):
@@ -87,6 +97,14 @@ class OrderSystem:
                 f"{order['id']},{order['customer']},{order['amount']},{order['status']}"
             )
 
+    def get_history(self, start=None, end=None):
+        if start is None and end is None:
+            return self.history_orders
+        return [
+            event for event in self.history_orders
+            if start <= event["create_at"] <= end
+        ]
+
 
 system = OrderSystem()
 
@@ -94,9 +112,8 @@ system.create_order(1, "Markus", 200)
 system.create_order(2, "Cindel", 300)
 system.create_order(3, "Quindim", 500)
 
-system.complete_order(1)
-print(system.get_order(1))
-system.reopen_order(1)
-print(system.get_order(1))
+system.complete_order(1,20)
+system.reopen_order(1,25)
+system.cancel_order(2,35)
 
-print(time.time())
+print(system.get_history(20,30))

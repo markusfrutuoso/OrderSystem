@@ -1,5 +1,6 @@
 import time
 
+
 class OrderSystem:
     def __init__(self):
         self.orders = {}
@@ -101,9 +102,17 @@ class OrderSystem:
         if start is None and end is None:
             return self.history_orders
         return [
-            event for event in self.history_orders
-            if start <= event["create_at"] <= end
+            event for event in self.history_orders if start <= event["create_at"] <= end
         ]
+
+    def get_total_by_customer(self):
+        total = {}
+        for order in self.orders.values():
+            customer = order["customer"]
+            amount = order["amount"]
+            total[customer] = total.get(customer, 0) + amount
+        ordened = sorted(total.items(), key=lambda item: item[1], reverse=True)
+        return ordened
 
 
 system = OrderSystem()
@@ -111,9 +120,10 @@ system = OrderSystem()
 system.create_order(1, "Markus", 200)
 system.create_order(2, "Cindel", 300)
 system.create_order(3, "Quindim", 500)
+system.create_order(4, "Cindel", 300)
 
-system.complete_order(1,20)
-system.reopen_order(1,25)
-system.cancel_order(2,35)
+system.complete_order(1, 20)
+system.reopen_order(1, 25)
+system.cancel_order(2, 35)
 
-print(system.get_history(20,30))
+print(system.get_total_by_customer())

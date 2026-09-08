@@ -4,6 +4,11 @@ class OrderSystem:
     def __init__(self):
         self.orders = {}
         self.history_orders = []
+        self.total_by_status = {
+            "pending": 0,
+            "completed": 0,
+            "cancelled": 0,
+        }
 
     def record_history(self, order_id, old_status, new_status, create_at=None):
         if create_at is None:
@@ -29,6 +34,7 @@ class OrderSystem:
             "status": "pending",
         }
         self.record_history(order_id, None, "pending", create_at)
+        self.update_total_by_status("pending", amount, None)
 
     def get_order(self, order_id):
         if order_id not in self.orders:
@@ -44,6 +50,8 @@ class OrderSystem:
         old_status = "pending"
         order["status"] = "cancelled"
         self.record_history(order_id, old_status, "cancelled", create_at)
+        amount = order["amount"]
+        self.update_total_by_status("cancelled", amount, "pending")
         return True
 
     def complete_order(self, order_id, create_at=None):
@@ -55,28 +63,28 @@ class OrderSystem:
         old_status = "pending"
         order["status"] = "completed"
         self.record_history(order_id, old_status, "completed", create_at)
+        amount = order["amount"]
+        self.update_total_by_status("completed", amount, "pending")
         return True
 
     def reopen_order(self, order_id, create_at=None):
         order = self.get_order(order_id)
-        if order["status"] == "cancelled":
+        if order["status"] != "completed":
             raise ValueError(
                 f"Apenas pedidos completados podem ser reabertos, status do pedido {order_id}: {order['status']}"
             )
         old_status = "completed"
         order["status"] = "pending"
         self.record_history(order_id, old_status, "pending", create_at)
+        amount = order["amount"]
+        self.update_total_by_status("pending", amount, "completed")
         return True
 
     def get_total_amount(self):
         return sum(order["amount"] for order in self.orders.values())
 
     def get_total_by_status(self, status):
-        return sum(
-            order["amount"]
-            for order in self.orders.values()
-            if order["status"] == status
-        )
+        return self.total_by_status[status]
 
     def count_by_status(self):
         total_pending = 0
@@ -103,3 +111,27 @@ class OrderSystem:
         return [
             event for event in self.history_orders if start <= event["create_at"] <= end
         ]
+
+    def get_total_by_customer(self, status=None):
+        total = {}
+        for order in self.orders.values():
+            if status is None or order["status"] == status:
+                customer = order["customer"]
+                amount = order["amount"]
+                total[customer] = total.get(customer, 0) + amount
+        ordened = sorted(total.items(), key=lambda item: (-item[1], item[0]))
+        return ordened
+
+    def top_customers(self, n, status=None):
+        ordened = self.get_total_by_customer(status)
+        return [
+            item[0] for item in ordened[:n]
+            ]
+
+    def update_total_by_status(self, new_status, amount, old_status=None):
+        if old_status is None:
+            self.total_by_status[new_status] += amount
+        else:
+            self.total_by_status[old_status] -= amount
+            self.total_by_status[new_status] += amount
+        return True

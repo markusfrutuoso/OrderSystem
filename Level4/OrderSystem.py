@@ -103,3 +103,19 @@ class OrderSystem:
         return [
             event for event in self.history_orders if start <= event["create_at"] <= end
         ]
+
+    def get_total_by_customer(self, status=None):
+        total = {}
+        for order in self.orders.values():
+            if status is None or order["status"] == status:
+                customer = order["customer"]
+                amount = order["amount"]
+                total[customer] = total.get(customer, 0) + amount
+        ordened = sorted(total.items(), key=lambda item: (-item[1], item[0]))
+        return ordened
+
+    def top_customers(self, n, status=None):
+        ordened = self.get_total_by_customer(status)
+        return [
+            item[0] for item in ordened[:n]
+            ]
